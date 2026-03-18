@@ -50,7 +50,7 @@ We evaluate the following state-of-the-art segmentation models:
 ## Result
 
 1. **Performance on state-of-the-art segmentation models**
-  <img src="assets/sota_performance.jpg" alt="Performance on SOTA models" width="1000"/>
+  <img src="assets/sota_performance.jpg" alt="Performance on SOTA models" width="700"/>
   <img src="assets/sota_performance_size.jpg" alt="Performance on SOTA models with different size" width="1000"/>
 
 2. **Performance across varying training data percentages**
