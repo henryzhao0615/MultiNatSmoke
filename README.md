@@ -3,7 +3,7 @@
 ---
 
 ## Overview
-<img src="assets/regions.jpg" alt="Country-wise distribution of the AnySmoke dataset" width="1000"/>
+<img src="assets/AusSmoke_vis.pdf" alt="Country-wise distribution of the AnySmoke dataset" width="1000"/>
 
 The official implement for our WACV 2026 paper _“AusSmoke meets MultiNatSmoke: a fully-labelled diverse smoke segmentation dataset”_. It provides:
 
