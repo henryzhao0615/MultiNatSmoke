@@ -5,10 +5,10 @@
 ## Overview
 <img src="assets/AusSmoke_vis.jpg" alt="Country-wise distribution of the AnySmoke dataset" width="1000"/>
 
-The official implement for our WACV 2026 paper _“AusSmoke meets MultiNatSmoke: a fully-labelled diverse smoke segmentation dataset”_. It provides:
+The official implement for our WACV 2026 paper **AusSmoke meets MultiNatSmoke: a fully-labelled diverse smoke segmentation dataset**. It provides:
 
 - A new wildfire smoke segmentation dataset, named **MultiNatSmoke**, including smoke images around the world. 
-- Evaluation scripts for state-of-the-art segmentation models on this dataset.
+- Evaluation scripts for state-of-the-art segmentation models on MultiNatSmoke.
 - Baseline results and benchmark metrics.
 
 ---
@@ -34,7 +34,7 @@ We evaluate the following state-of-the-art segmentation models:
 
 1. **Prepare the AnySmoke dataset**
 
-   * Download AnySmoke Dataset at [[Hugging Face 🤗]](https://www.kaggle.com/datasets/zhaohongjin0615/anysmoke)
+   * Download AnySmoke Dataset at [[Hugging Face 🤗]](https://huggingface.co/datasets/hongjinzhao0615/MultiNatSmoke)
 
 2. **Train a model**
 
