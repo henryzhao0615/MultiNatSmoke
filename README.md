@@ -13,6 +13,28 @@ The official implement for our WACV 2026 paper **AusSmoke meets MultiNatSmoke: a
 
 ---
 
+## Datasets
+
+Our dataset is partially compiled from various existing public datasets, with **added segmentation labels**. Please ensure you **cite the original datasets** before downloading or using our dataset. Most datasets are included in this release; however, the **Forest Fire** dataset requires a separate download. Use the script `curate_kaggle_forest_fire.py` (included in both the `code` folder and dataset release) for downloading and extracting the images.  
+
+| Dataset | Link | License |
+|---------|------|---------|
+| **FIgLib** | [Link](https://www.hpwren.ucsd.edu/FIgLib/) | – |
+| **Smoke5K** | [Link](https://github.com/SiyuanYan1/Transmission-BVM) | – |
+| **SmokeSeg** | [Link](https://github.com/LujianYao/FoSp) | – |
+| **AI-for-Mankind** | [Link](https://github.com/aiformankind/wildfire-smoke-dataset?tab=readme-ov-file) | CC BY-NC-SA 4.0 |
+| **Firecam** | [Link](https://github.com/open-climate-tech/firecam/tree/master/datasets/2019a) | CC BY-NC-SA 4.0 |
+| **Boreal Forest Fire** | [Link](https://etsin.fairdata.fi/dataset/1dce1023-493a-4d63-a906-f2a44f831898) | CC BY 4.0 |
+| **D-Fire** | [Link](https://github.com/gaia-solutions-on-demand/DFireDataset) | CC0 1.0 (Public Domain) |
+| **WSDataset** | [Link](https://www.kaggle.com/datasets/gloryvu/wildfire-smoke-detection) | MIT |
+| **FireSpot** | [Link](https://github.com/Biometrix-4/FireSpot-CNX) | CC BY 4.0 |
+| **FESB-MLID** | [Link](http://wildfire.fesb.hr/index.php?option=com_content&view=article&id=66%20&Itemid=76) | – |
+| **Forest Fire** | [Link](https://www.kaggle.com/datasets/kutaykutlu/forest-fire) | – |
+
+> **Note:** Please use the references listed in the **Citation** section of this repository when citing these datasets.
+
+---
+
 ## Supported Models
 
 We evaluate the following state-of-the-art segmentation models:
