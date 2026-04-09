@@ -5,12 +5,12 @@
 ## Overview
 <img src="assets/AusSmoke_vis.jpg" alt="Vis the dataset" width="1000"/>
 
-The official implement for our WACV 2026 paper **AusSmoke meets MultiNatSmoke: a fully-labelled diverse smoke segmentation dataset**. [paper](https://openaccess.thecvf.com/content/WACV2026/papers/Li_AusSmoke_meets_MultiNatSmoke_a_fully-labelled_diverse_smoke_segmentation_dataset_WACV_2026_paper.pdf) [arXiv]() It provides:
+The official implement for our WACV 2026 paper **AusSmoke meets MultiNatSmoke: a fully-labelled diverse smoke segmentation dataset** [paper](https://openaccess.thecvf.com/content/WACV2026/papers/Li_AusSmoke_meets_MultiNatSmoke_a_fully-labelled_diverse_smoke_segmentation_dataset_WACV_2026_paper.pdf) [arXiv](). It provides:
 
 - A new wildfire smoke segmentation dataset, named **MultiNatSmoke**, including smoke images around the world. 
 - Evaluation scripts for state-of-the-art segmentation models on MultiNatSmoke.
 - Baseline results and benchmark metrics.
-
+- 
 ---
 
 ## Datasets
