@@ -1,14 +1,14 @@
-#!/usr/bin/env python3
 """
 curate_kaggle_forest_fire.py
 
 Automates:
 1. Ensure Kaggle Forest Fire dataset is available locally
 2. Download via kagglehub (with cache)
-3. Copy dataset into expected raw_data folder
-4. Curate images for all dataset configs using image_list.txt
+3. Read txt files from target folders
+4. Copy same-named images from data/kaggle_forest_fire/test-big
+   into the same folder where each txt file is located
 
-Run from dataset root:
+Run from code root:
     python curate_kaggle_forest_fire.py
 """
 
@@ -72,123 +72,98 @@ def ensure_dataset(raw_root):
 
 
 # -----------------------------
-# Build index for fast lookup
+# Find all target txt files
 # -----------------------------
-def build_image_index(raw_root):
-    print("[INFO] Indexing raw dataset...")
-    index = {}
+def collect_target_txts(base_dir):
+    """
+    Find all txt files under:
+    - MultiNatSmokeDataset/Train/Forest_Fire
+    - MultiNatSmokeDataset/Test/Forest_Fire
+    - TestLarge
+    - TestMedium
+    - TestSmall
+    """
+    target_dirs = [
+        os.path.join(base_dir, "data", "MultiNatSmokeDataset", "Train", "Forest_Fire"),
+        os.path.join(base_dir, "data", "MultiNatSmokeDataset", "Test", "Forest_Fire"),
+        os.path.join(base_dir, "data", "MultiNatSmokeDataset", "TestLarge", "Forest_Fire"),
+        os.path.join(base_dir, "data", "MultiNatSmokeDataset", "TestMedium", "Forest_Fire"),
+        os.path.join(base_dir, "data", "MultiNatSmokeDataset", "TestSmall", "Forest_Fire"),
+    ]
 
-    for root, _, files in os.walk(raw_root):
-        for f in files:
-            index[f] = os.path.join(root, f)
+    txt_files = []
 
-    print(f"[INFO] Indexed {len(index)} files.")
-    return index
-
-
-# -----------------------------
-# Find dataset configs
-# -----------------------------
-def find_configs(base_dir):
-    configs = []
-
-    for entry in os.listdir(base_dir):
-        path = os.path.join(base_dir, entry)
-
-        if not os.path.isdir(path):
+    for folder in target_dirs:
+        if not os.path.exists(folder):
+            print(f"[WARNING] Folder not found, skipped: {folder}")
             continue
 
-        list_file = os.path.join(
-            path,
-            "kaggle_Forest_Fire",
-            "image_list.txt"
-        )
+        for name in os.listdir(folder):
+            if not name.lower().endswith(".txt"):
+                continue
 
-        if os.path.exists(list_file):
-            configs.append(entry)
+            if name.lower() == "info.txt":
+                print(f"[INFO] Ignored file: {os.path.join(folder, name)}")
+                continue
 
-    print(f"[INFO] Found {len(configs)} dataset configs.")
-    return configs
+            txt_files.append(os.path.join(folder, name))
+
+    print(f"[INFO] Found {len(txt_files)} txt files.")
+    return txt_files
 
 
 # -----------------------------
-# Curate images
+# Read image names from one txt
 # -----------------------------
-def curate_images(base_dir, config, image_index):
-    list_path = os.path.join(
-        base_dir,
-        config,
-        "kaggle_Forest_Fire",
-        "image_list.txt"
-    )
+def read_image_list(txt_path):
+    with open(txt_path, "r", encoding="utf-8") as f:
+        lines = [line.strip() for line in f if line.strip()]
+    return lines
 
-    dest_dir = os.path.join(
-        base_dir,
-        config,
-        "kaggle_Forest_Fire",
-        "images"
-    )
 
-    print(f"\n[INFO] Processing config: {config}")
+# -----------------------------
+# Copy images for one txt file
+# -----------------------------
+def copy_images_from_test_big(txt_path, source_dir):
+    """
+    Copy images listed in txt_path from source_dir
+    into an 'images' folder under the same folder as txt_path.
+    """
+    image_names = read_image_list(txt_path)
+
+    parent_dir = os.path.dirname(txt_path)
+    dest_dir = os.path.join(parent_dir, "images")
     os.makedirs(dest_dir, exist_ok=True)
-
-    with open(list_path, "r") as f:
-        image_list = [line.strip() for line in f if line.strip()]
 
     copied = 0
     missing = 0
 
-    for img_name in image_list:
-        if img_name not in image_index:
-            missing += 1
-            continue
+    print(f"\n[INFO] Processing txt: {txt_path}")
+    print(f"[INFO] Destination folder: {dest_dir}")
 
-        src = image_index[img_name]
+    for img_name in image_names:
+        src = os.path.join(source_dir, img_name)
         dst = os.path.join(dest_dir, img_name)
 
-        shutil.copy2(src, dst)
-        copied += 1
+        if os.path.exists(src):
+            shutil.copy2(src, dst)
+            copied += 1
+        else:
+            print(f"[MISSING] {img_name}")
+            missing += 1
 
-    print(f"[SUMMARY] {config} → Copied: {copied}, Missing: {missing}")
+    print(f"[SUMMARY] {os.path.basename(txt_path)} -> Copied: {copied}, Missing: {missing}")
 
-
-# -----------------------------
-# Verification: images vs masks
-# -----------------------------
-def verify_masks(base_dir, configs):
-    print("\n[INFO] Verifying masks consistency with images...")
-
-    for config in configs:
-        kaggle_dir = os.path.join(base_dir, config, "kaggle_Forest_Fire")
-        images_dir = os.path.join(kaggle_dir, "images")
-        masks_dir = os.path.join(kaggle_dir, "masks")
-
-        if not os.path.exists(masks_dir):
-            print(f"[WARNING] Masks folder missing for {config}: {masks_dir}")
-            continue
-
-        image_files = set(os.path.splitext(f)[0] for f in os.listdir(images_dir) if os.path.isfile(os.path.join(images_dir, f)))
-        mask_files = set(os.path.splitext(f)[0] for f in os.listdir(masks_dir) if os.path.isfile(os.path.join(masks_dir, f)))
-
-        # Check each mask has a corresponding image
-        missing_images = mask_files - image_files
-        if missing_images:
-            print(f"[WARNING] {len(missing_images)} masks without corresponding images in {config}: {missing_images}")
-
-        # Optionally, also warn if images missing masks
-        # missing_masks = image_files - mask_files
-        # if missing_masks:
-        #     print(f"[WARNING] {len(missing_masks)} images missing masks in {config}: {missing_masks}")
-
-        if not missing_images:
-            print(f"[INFO] All masks have corresponding images for {config}")
 
 # -----------------------------
 # Main
 # -----------------------------
 def main():
     base_dir = os.getcwd()
-    raw_root = os.path.join(base_dir, "raw_data", "kaggle_forest_fire")
+    print(base_dir)
+
+    raw_root = os.path.join(base_dir, "data", "kaggle_forest_fire")
+    source_dir = os.path.join(raw_root, "test_big")
 
     print(f"[INFO] Working directory: {base_dir}")
 
@@ -198,24 +173,25 @@ def main():
     # Step 2: ensure dataset
     ensure_dataset(raw_root)
 
-    # Step 3: find configs
-    configs = find_configs(base_dir)
-
-    if not configs:
-        print("[ERROR] No dataset configs found.")
+    # Step 3: check source folder
+    if not os.path.exists(source_dir):
+        print(f"[ERROR] Source folder not found: {source_dir}")
         sys.exit(1)
 
-    # Step 4: build index once
-    image_index = build_image_index(raw_root)
+    print(f"[INFO] Source image folder: {source_dir}")
 
-    # Step 5: process each config
-    for config in configs:
-        curate_images(base_dir, config, image_index)
+    # Step 4: collect target txt files
+    txt_files = collect_target_txts(base_dir)
 
-    # -----------------------------
-    # Step 6: Verify masks
-    # -----------------------------
-    verify_masks(base_dir, configs)
+    if not txt_files:
+        print("[ERROR] No txt files found in target folders.")
+        sys.exit(1)
+
+    # Step 5: copy images according to each txt
+    for txt_path in txt_files:
+        copy_images_from_test_big(txt_path, source_dir)
+
+    print("\n[INFO] Done.")
 
 
 if __name__ == "__main__":
