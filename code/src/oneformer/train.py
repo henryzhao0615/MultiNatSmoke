@@ -16,7 +16,7 @@ from tqdm import tqdm
 from transformers import SegformerForSemanticSegmentation
 import sys
 sys.path.append('/workspace/mycode/CODE')
-from utils import AnySmokeSegDataset
+from code.models.utils import AnySmokeSegDataset
 
 # -----------------------
 # Globals / config

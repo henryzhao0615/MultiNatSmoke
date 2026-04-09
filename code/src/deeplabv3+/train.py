@@ -10,11 +10,11 @@ import torch.optim as optim
 from segmentation_models_pytorch.utils.metrics import IoU, Fscore
 import matplotlib.pyplot as plt
 from PIL import Image
-import torchvision.transforms as transforms
 from tqdm import tqdm
+import torchvision.transforms as transforms
 import sys
 sys.path.append('')
-from utils import AnySmokeSegDataset
+from code.models.utils import AnySmokeSegDataset
 
 def compute_metrics(outputs, masks, threshold=0.5, eps=1e-6):
     """
@@ -63,11 +63,13 @@ def evaluate(model, loader, device):
                 metrics_sum[k] += v
             n_batches += 1
 
+    # 平均
     for k in metrics_sum:
         metrics_sum[k] /= n_batches
     return metrics_sum
 
 def train():
+    # 超参数
     num_epochs = 15
     batch_size = 32
     lr = 1e-4
@@ -94,41 +96,43 @@ def train():
     val_medium_ds   = AnySmokeSegDataset(val_medium_dir,   transform=transform)
     val_large_ds   = AnySmokeSegDataset(val_large_dir,   transform=transform)
 
+
     ### Ablation code start
-    # num_samples = len(train_ds)
-    # indices     = list(range(num_samples))
-    # np.random.seed(42)        
-    # np.random.shuffle(indices)
+    num_samples = len(train_ds)
+    indices     = list(range(num_samples))
+    np.random.seed(42)             # 固定 seed 保证可复现
+    np.random.shuffle(indices)
     
-    # Scale = 0.8
-    # split = int(Scale * num_samples)
-    # print(Scale)
-    # train_idx = indices[:split]
-    # sampler = SubsetRandomSampler(train_idx)
+    Scale = 0.2
+    split = int(Scale * num_samples)
+    print(Scale)
+    train_idx = indices[:split]
+    sampler = SubsetRandomSampler(train_idx)
 
-    # train_loader = DataLoader(
-    #     train_ds,
-    #     batch_size=batch_size,
-    #     sampler=sampler,  
-    #     num_workers=4
-    # )
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        sampler=sampler,    # 用 sampler 代替 shuffle
+        num_workers=4
+    )
 
-    # print(len(train_loader)*batch_size)
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=4)
-    val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
+    print(len(train_loader)*batch_size)
 
+    # train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=4)
+    val_loader = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
 
     val_small_loader   = DataLoader(val_small_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
     val_medium_loader   = DataLoader(val_medium_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
     val_large_loader   = DataLoader(val_large_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
 
-
-    model = smp.Unet(
+    # 模型 & 损失 & 优化器
+    model = smp.DeepLabV3Plus(
         encoder_name="resnet50",
         encoder_weights="imagenet",
         in_channels=3,
         classes=1,
     )
+
     criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
 
@@ -157,10 +161,10 @@ def train():
 
         avg_train_loss = running_loss / len(train_loader)
 
-        # val
+        # 验证
         val_metrics = evaluate(model, val_loader, device)
         val_iou = val_metrics['iou']
-        print("full")
+
         print(f"Epoch [{epoch}/{num_epochs}] "
               f"Train Loss: {avg_train_loss:.4f} "
               f"Val IoU: {val_iou:.4f}  "
@@ -169,6 +173,9 @@ def train():
               f"F1: {val_metrics['f1']:.4f}  "
               f"MSE: {val_metrics['mse']:.6f}")
 
+        # 保存最优
+        if val_iou > best_val_iou:
+            best_val_iou = val_iou
 
         ## large
         val_large_metrics = evaluate(model, val_large_loader, device)
@@ -202,12 +209,10 @@ def train():
               f"Recall: {val_small_metrics['recall']:.4f}  "
               f"F1: {val_small_metrics['f1']:.4f}  "
               f"MSE: {val_small_metrics['mse']:.6f}")
+        
 
-        if val_iou > best_val_iou:
-            best_val_iou = val_iou
-
+    # 加载最佳权重
     print(f"Training complete. Best Val IoU: {best_val_iou:.4f}")
-
 
 if __name__ == "__main__":
     train()

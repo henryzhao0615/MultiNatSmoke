@@ -5,7 +5,6 @@ import copy
 import numpy as np
 from torch.utils.data import Dataset, DataLoader,SubsetRandomSampler
 from torchvision import transforms
-from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 import segmentation_models_pytorch as smp
 import torch.optim as optim
 from segmentation_models_pytorch.utils.metrics import IoU, Fscore
@@ -13,10 +12,9 @@ import matplotlib.pyplot as plt
 from PIL import Image
 import torchvision.transforms as transforms
 from tqdm import tqdm
-from transformers import SegformerForSemanticSegmentation
 import sys
 sys.path.append('')
-from utils import AnySmokeSegDataset
+from code.models.utils import AnySmokeSegDataset
 
 def compute_metrics(outputs, masks, threshold=0.5, eps=1e-6):
     """
@@ -53,7 +51,6 @@ def evaluate(model, loader, device):
     model.eval()
     metrics_sum = {'iou':0, 'precision':0, 'recall':0, 'f1':0, 'mse':0}
     n_batches = 0
-    label2id = {"smoke": 1}
 
     with torch.no_grad():
         for images, masks in loader:
@@ -61,19 +58,7 @@ def evaluate(model, loader, device):
             masks = masks.to(device)
             outputs = model(images)
 
-            # logits = outputs.logits
-            # upsampled_logits = torch.nn.functional.interpolate(logits, size=(512,512), mode="bilinear", align_corners=False)
-
-            logits = outputs.masks_queries_logits
-            upsampled_logits = torch.nn.functional.interpolate(logits, size=(512,512), mode="bilinear", align_corners=False)
-            
-            class_logits = outputs.class_queries_logits
-            probs = torch.softmax(class_logits, dim=-1)
-            smoke_scores = probs[..., label2id["smoke"]]
-            smoke_scores = smoke_scores.unsqueeze(-1).unsqueeze(-1)
-            per_pixel_logits = (upsampled_logits * smoke_scores).sum(dim=1, keepdim=True)  
-
-            batch_metrics = compute_metrics(per_pixel_logits, masks)
+            batch_metrics = compute_metrics(outputs, masks)
             for k, v in batch_metrics.items():
                 metrics_sum[k] += v
             n_batches += 1
@@ -84,7 +69,7 @@ def evaluate(model, loader, device):
 
 def train():
     num_epochs = 15
-    batch_size = 16
+    batch_size = 32
     lr = 1e-4
 
     train_dir = "./AnySmokeDataset/AnySmokeTrain"
@@ -112,7 +97,7 @@ def train():
     ### Ablation code start
     # num_samples = len(train_ds)
     # indices     = list(range(num_samples))
-    # np.random.seed(42)           
+    # np.random.seed(42)        
     # np.random.shuffle(indices)
     
     # Scale = 0.8
@@ -124,13 +109,12 @@ def train():
     # train_loader = DataLoader(
     #     train_ds,
     #     batch_size=batch_size,
-    #     sampler=sampler, 
+    #     sampler=sampler,  
     #     num_workers=4
     # )
 
     # print(len(train_loader)*batch_size)
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=4)
-    print('full')
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
 
 
@@ -138,19 +122,13 @@ def train():
     val_medium_loader   = DataLoader(val_medium_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
     val_large_loader   = DataLoader(val_large_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
 
-    id2label = {1: "smoke"}
-    label2id = {"smoke": 1}
-    MODEL_NAME = '/workspace/mycode/mask2former'
-    print(MODEL_NAME)
-    model = Mask2FormerForUniversalSegmentation.from_pretrained(
-        MODEL_NAME,  
-        num_labels=len(id2label),
-        id2label=id2label,
-        label2id=label2id,
-        ignore_mismatched_sizes=True
-    )
-    IMAGE_SIZE = (512, 512) 
 
+    model = smp.Unet(
+        encoder_name="resnet50",
+        encoder_weights="imagenet",
+        in_channels=3,
+        classes=1,
+    )
     criterion = torch.nn.BCEWithLogitsLoss()
     optimizer = optim.AdamW(model.parameters(), lr=lr, weight_decay=0.01)
 
@@ -169,18 +147,9 @@ def train():
             masks = masks.to(device).unsqueeze(1).float()  # (B,1,H,W)
 
             optimizer.zero_grad()
-            outputs = model(pixel_values=images)
-            # breakpoint()
-            logits = outputs.masks_queries_logits
-            upsampled_logits = torch.nn.functional.interpolate(logits, size=IMAGE_SIZE, mode="bilinear", align_corners=False)
-            
-            class_logits = outputs.class_queries_logits
-            probs = torch.softmax(class_logits, dim=-1)
-            smoke_scores = probs[..., label2id["smoke"]]
-            smoke_scores = smoke_scores.unsqueeze(-1).unsqueeze(-1)
-            per_pixel_logits = (upsampled_logits * smoke_scores).sum(dim=1, keepdim=True)  
-            loss = criterion(per_pixel_logits, masks)
+            outputs = model(images)
 
+            loss = criterion(outputs, masks)
             loss.backward()
             optimizer.step()
 
@@ -188,9 +157,10 @@ def train():
 
         avg_train_loss = running_loss / len(train_loader)
 
+        # val
         val_metrics = evaluate(model, val_loader, device)
         val_iou = val_metrics['iou']
-
+        print("full")
         print(f"Epoch [{epoch}/{num_epochs}] "
               f"Train Loss: {avg_train_loss:.4f} "
               f"Val IoU: {val_iou:.4f}  "
@@ -198,6 +168,7 @@ def train():
               f"Recall: {val_metrics['recall']:.4f}  "
               f"F1: {val_metrics['f1']:.4f}  "
               f"MSE: {val_metrics['mse']:.6f}")
+
 
         ## large
         val_large_metrics = evaluate(model, val_large_loader, device)
@@ -236,6 +207,7 @@ def train():
             best_val_iou = val_iou
 
     print(f"Training complete. Best Val IoU: {best_val_iou:.4f}")
+
 
 if __name__ == "__main__":
     train()

@@ -5,6 +5,7 @@ import copy
 import numpy as np
 from torch.utils.data import Dataset, DataLoader,SubsetRandomSampler
 from torchvision import transforms
+from transformers import AutoImageProcessor, Mask2FormerForUniversalSegmentation
 import segmentation_models_pytorch as smp
 import torch.optim as optim
 from segmentation_models_pytorch.utils.metrics import IoU, Fscore
@@ -15,7 +16,7 @@ from tqdm import tqdm
 from transformers import SegformerForSemanticSegmentation
 import sys
 sys.path.append('')
-from utils import AnySmokeSegDataset
+from code.models.utils import AnySmokeSegDataset
 
 def compute_metrics(outputs, masks, threshold=0.5, eps=1e-6):
     """
@@ -52,6 +53,7 @@ def evaluate(model, loader, device):
     model.eval()
     metrics_sum = {'iou':0, 'precision':0, 'recall':0, 'f1':0, 'mse':0}
     n_batches = 0
+    label2id = {"smoke": 1}
 
     with torch.no_grad():
         for images, masks in loader:
@@ -59,11 +61,19 @@ def evaluate(model, loader, device):
             masks = masks.to(device)
             outputs = model(images)
 
+            # logits = outputs.logits
+            # upsampled_logits = torch.nn.functional.interpolate(logits, size=(512,512), mode="bilinear", align_corners=False)
 
-            logits = outputs.logits
+            logits = outputs.masks_queries_logits
             upsampled_logits = torch.nn.functional.interpolate(logits, size=(512,512), mode="bilinear", align_corners=False)
+            
+            class_logits = outputs.class_queries_logits
+            probs = torch.softmax(class_logits, dim=-1)
+            smoke_scores = probs[..., label2id["smoke"]]
+            smoke_scores = smoke_scores.unsqueeze(-1).unsqueeze(-1)
+            per_pixel_logits = (upsampled_logits * smoke_scores).sum(dim=1, keepdim=True)  
 
-            batch_metrics = compute_metrics(upsampled_logits, masks)
+            batch_metrics = compute_metrics(per_pixel_logits, masks)
             for k, v in batch_metrics.items():
                 metrics_sum[k] += v
             n_batches += 1
@@ -74,10 +84,10 @@ def evaluate(model, loader, device):
 
 def train():
     num_epochs = 15
-    batch_size = 32
+    batch_size = 16
     lr = 1e-4
 
-    train_dir = "./AnySmokeDataset/AnySmokeTrain5k"
+    train_dir = "./AnySmokeDataset/AnySmokeTrain"
     val_dir   = "./AnySmokeDataset/AnySmokeTest"
     val_small_dir   = "./AnySmokeDataset/AnySmokeTestSmall"
     val_medium_dir   = "./AnySmokeDataset/AnySmokeTestMedium"
@@ -102,10 +112,10 @@ def train():
     ### Ablation code start
     # num_samples = len(train_ds)
     # indices     = list(range(num_samples))
-    # np.random.seed(42)
+    # np.random.seed(42)           
     # np.random.shuffle(indices)
     
-    # Scale = 0.2
+    # Scale = 0.8
     # split = int(Scale * num_samples)
     # print(Scale)
     # train_idx = indices[:split]
@@ -114,16 +124,15 @@ def train():
     # train_loader = DataLoader(
     #     train_ds,
     #     batch_size=batch_size,
-    #     sampler=sampler,
+    #     sampler=sampler, 
     #     num_workers=4
     # )
 
     # print(len(train_loader)*batch_size)
     train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True,  num_workers=4)
-
-    print(len(train_loader)*batch_size)
-    
+    print('full')
     val_loader   = DataLoader(val_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
+
 
     val_small_loader   = DataLoader(val_small_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
     val_medium_loader   = DataLoader(val_medium_ds,   batch_size=batch_size, shuffle=False, num_workers=4)
@@ -131,13 +140,14 @@ def train():
 
     id2label = {1: "smoke"}
     label2id = {"smoke": 1}
-
-    model = SegformerForSemanticSegmentation.from_pretrained(
-        "mycode/mit-b5", 
+    MODEL_NAME = '/workspace/mycode/mask2former'
+    print(MODEL_NAME)
+    model = Mask2FormerForUniversalSegmentation.from_pretrained(
+        MODEL_NAME,  
         num_labels=len(id2label),
         id2label=id2label,
         label2id=label2id,
-        ignore_mismatched_sizes=True 
+        ignore_mismatched_sizes=True
     )
     IMAGE_SIZE = (512, 512) 
 
@@ -160,11 +170,17 @@ def train():
 
             optimizer.zero_grad()
             outputs = model(pixel_values=images)
-
-            logits = outputs.logits
-            upsampled_logits = torch.nn.functional.interpolate(logits, size=IMAGE_SIZE, mode="bilinear", align_corners=False)
             # breakpoint()
-            loss = criterion(upsampled_logits, masks)
+            logits = outputs.masks_queries_logits
+            upsampled_logits = torch.nn.functional.interpolate(logits, size=IMAGE_SIZE, mode="bilinear", align_corners=False)
+            
+            class_logits = outputs.class_queries_logits
+            probs = torch.softmax(class_logits, dim=-1)
+            smoke_scores = probs[..., label2id["smoke"]]
+            smoke_scores = smoke_scores.unsqueeze(-1).unsqueeze(-1)
+            per_pixel_logits = (upsampled_logits * smoke_scores).sum(dim=1, keepdim=True)  
+            loss = criterion(per_pixel_logits, masks)
+
             loss.backward()
             optimizer.step()
 
