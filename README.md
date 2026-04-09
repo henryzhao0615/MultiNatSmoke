@@ -77,6 +77,7 @@ We evaluate the following state-of-the-art segmentation models:
    * `oneformer`
    * `segformer`
    * `unet`
+   
    Model performance will be evaluated used IoU, MSE, F1, Precision and Recall.
 
 ---
