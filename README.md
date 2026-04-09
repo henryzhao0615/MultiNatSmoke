@@ -62,28 +62,24 @@ We evaluate the following state-of-the-art segmentation models:
 
 2. **Run Forest Fire Dataset Download Script**
 
-  ```bash
+   ```bash
    python lib/curate_forest_fire.py
    ```
-
 3. **Train a model**
 
    ```bash
    python model_name/train.py
    ```
 
-  Replace `model_name` with one of the following:
-  * `deeplabv3+`
-  * `mask2former`
-  * `oneformer`
-  * `segformer`
-  * `unet`
-
-
-  Model performance will be evaluated used IoU, MSE, F1, Precision and Recall.
+   Replace `model_name` with one of the following:
+   * `deeplabv3+`
+   * `mask2former`
+   * `oneformer`
+   * `segformer`
+   * `unet`
+   Model performance will be evaluated used IoU, MSE, F1, Precision and Recall.
 
 ---
-
 
 ## Result
 
