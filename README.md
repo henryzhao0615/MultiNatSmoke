@@ -10,7 +10,7 @@ The official implement for our WACV 2026 paper **AusSmoke meets MultiNatSmoke: a
 - A new wildfire smoke segmentation dataset, named **MultiNatSmoke**, including smoke images around the world. 
 - Evaluation scripts for state-of-the-art segmentation models on MultiNatSmoke.
 - Baseline results and benchmark metrics.
-- 
+
 ---
 
 ## Datasets
