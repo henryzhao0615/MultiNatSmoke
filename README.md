@@ -58,7 +58,7 @@ We evaluate the following state-of-the-art segmentation models:
 
 1. **Prepare the MultiNatSmoke dataset**
 
-   * Download MultiNatSmoke Dataset at [[Hugging Face 🤗]](https://huggingface.co/datasets/hongjinzhao0615/MultiNatSmoke), then put the `MultiNatSmoke` folder in `code/data` folder
+   * Download MultiNatSmoke Dataset at [[Hugging Face 🤗]](https://huggingface.co/datasets/hongjinzhao0615/MultiNatSmoke), then put the `MultiNatSmokeDataset` folder in `code/data` folder
 
 2. **Run Forest Fire Dataset Download Script**
 
