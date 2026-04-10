@@ -28,8 +28,6 @@ LABEL_INDEX = 1             # We'll map "smoke" -> 1, reserving 0 for "backgroun
 id2label = {LABEL_INDEX: LABEL_NAME}
 label2id = {LABEL_NAME: LABEL_INDEX}
 
-# If you later want a real tokenizer, you can set it here (e.g., CLIPTokenizer).
-# For now we rely on the fallback path in make_task_inputs().
 from transformers import AutoTokenizer
 tokenizer = AutoTokenizer.from_pretrained('/workspace/mycode/oneformer2')
 
@@ -189,7 +187,7 @@ def train():
  ### Ablation code start
     # num_samples = len(train_ds)
     # indices     = list(range(num_samples))
-    # np.random.seed(42)             # 固定 seed 保证可复现
+    # np.random.seed(42)
     # np.random.shuffle(indices)
     
     # Scale = 0.8
@@ -201,7 +199,7 @@ def train():
     # train_loader = DataLoader(
     #     train_ds,
     #     batch_size=batch_size,
-    #     sampler=sampler,    # 用 sampler 代替 shuffle
+    #     sampler=sampler,
     #     num_workers=4
     # )
 
